@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Towny Rehber Kitapçığı</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#111318;color:#eee;display:flex;min-height:100vh}
+.sidebar{width:270px;background:#181b21;border-right:1px solid #30343d;padding:25px 15px;position:fixed;height:100vh;overflow-y:auto}
+.logo{text-align:center;font-size:21px;font-weight:bold;margin-bottom:30px}.logo span{display:block;font-size:35px;margin-bottom:8px}
+.menu-title{color:#888f9d;font-size:12px;margin:18px 10px 8px;text-transform:uppercase}
+.menu button,.admin-btn{width:100%;padding:12px;margin-bottom:5px;border:none;border-radius:7px;background:transparent;color:#cfd3da;text-align:left;cursor:pointer;font-size:14px}
+.menu button:hover,.admin-btn:hover{background:#252a33;color:#fff}.menu button.active{background:#303743;color:#fff}
+.admin-btn{margin-top:20px;background:#252a33;text-align:center}
+.content{margin-left:270px;width:calc(100% - 270px);padding:60px}.page{max-width:900px;margin:auto}
+.welcome,.card{background:#181b21;border:1px solid #30343d;border-radius:12px}
+.welcome{padding:45px;margin-bottom:25px}.card{padding:25px;margin-bottom:15px}
+h1{font-size:38px;margin-bottom:15px}h2{font-size:28px;margin-bottom:18px}h3{margin:25px 0 10px}
+p{color:#b9bec8;line-height:1.7;margin-bottom:15px}ul{margin-left:20px;color:#b9bec8;line-height:2}
+.quote{border-left:4px solid #777f8d;padding:15px 20px;margin:20px 0;background:#20242b;color:#dfe2e7}
+table{width:100%;border-collapse:collapse;margin:15px 0;color:#ddd}th,td{border:1px solid #3a3f49;padding:12px;text-align:left}th{background:#252a33}
+code,.command{background:#0d0f13;padding:3px 7px;border-radius:5px;color:#ddd}.command{display:block;padding:15px;margin:15px 0;font-family:monospace}
+footer{text-align:center;color:#666d78;margin-top:50px;padding-bottom:30px}
+#adminPanel{display:none}.admin-grid{display:grid;gap:12px}.admin-input,.admin-textarea{width:100%;background:#0f1116;border:1px solid #3b414c;color:#eee;border-radius:7px;padding:11px;font-size:14px}
+.admin-textarea{min-height:150px;resize:vertical}.admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.action{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;background:#303743;color:#fff}.action:hover{background:#3b4350}.danger{background:#542d32}.danger:hover{background:#6b363d}
+.small{font-size:12px;color:#8f96a3;line-height:1.5}
+.section-list{display:grid;gap:8px;margin-top:15px}.section-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#20242b;border:1px solid #30343d;padding:10px;border-radius:7px}.section-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:700px){.sidebar{width:210px}.content{margin-left:210px;width:calc(100% - 210px);padding:25px}h1{font-size:30px}}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<aside class="sidebar">
+<div class="logo"><span>📖</span>TOWNY REHBER</div>
+<div class="menu-title">Kitapçık</div>
+<div class="menu" id="menu"></div>
+<button class="admin-btn" onclick="openAdminPanel()">⚙️ Yönetim Paneli</button>
+</aside>
+
+<main class="content">
+<div class="page" id="site"></div>
+
+<div class="page" id="adminLogin" style="display:none">
+  <div class="card">
+    <h2>🔐 Yetkili Girişi</h2>
+    <p>Yönetim paneline girmek için yetkili şifresini gir.</p>
+    <div class="admin-grid">
+      <input id="adminPassword" class="admin-input" type="password" placeholder="Yetkili şifresi" onkeydown="if(event.key==='Enter') checkAdminPassword()">
+    </div>
+    <div class="admin-actions">
+      <button class="action" onclick="checkAdminPassword()">🔑 Giriş Yap</button>
+      <button class="action" onclick="closeAdminLogin()">← Vazgeç</button>
+    </div>
+    <p id="adminLoginMessage" class="small"></p>
+  </div>
+</div>
+
+<div class="page" id="adminPanel" style="display:none">
+<div class="card">
+<h2>⚙️ Yönetim Paneli</h2>
+<p>Buradan kitapçığın bölümlerini kod açmadan düzenleyebilirsin.</p>
+<p class="small">Değişiklikler Supabase'e kaydedilir ve rehberi kullanan diğer yetkililere de yansır.</p>
+</div>
+<div class="card">
+<h3>Yeni bölüm ekle</h3>
+<div class="admin-grid">
+<input id="newTitle" class="admin-input" placeholder="Bölüm adı">
+<textarea id="newContent" class="admin-textarea" placeholder="Bölüm içeriği"></textarea>
+</div>
+<div class="admin-actions"><button class="action" onclick="addSection()">➕ Bölüm Ekle</button></div>
+</div>
+<div class="card">
+<h3>Mevcut bölümler</h3>
+<div id="sectionList" class="section-list"></div>
+<div class="admin-actions">
+<button class="action" onclick="resetData()">↩️ İlk haline döndür</button>
+<button class="action" onclick="closeAdmin()">← Siteye dön</button>
+<button id="logoutBtn" class="action danger" onclick="logoutAdmin()">🚪 Çıkış Yap</button>
+</div>
+</div>
+</div>
+<footer>Towny Rehber Ekibi • Rehber Kitapçığı</footer>
+</main>
+
+<script>
+const SUPABASE_URL = "https://bthkzilssdimbfayfpxq.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_DRfOZztCnxoJ63itzycfgg_JAs1jeiG";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+const defaultSections = [
+{id:"ana",title:"🏠 Ana Sayfa",content:`<p>Towny Rehber Ekibi için hazırlanmış görev, davranış ve uygulama kılavuzu.</p><div class="quote">"Oyuncuya yardım et, taraf tutma, bilmediğini uydurma ve yetkini kişisel amaçlarla kullanma."</div>`},
+{id:"gorev",title:"📌 Rehberlerin Görevi",content:`<p>Rehberlerin temel görevi oyunculara Towny sistemini öğretmek ve yaşadıkları sorunlarda doğru şekilde yardımcı olmaktır.</p><h3>Temel görevler</h3><ul><li>Yeni oyunculara Towny sistemini anlatmak.</li><li>Town, Nation ve claim sistemlerini öğretmek.</li><li>Komutlar hakkında bilgi vermek.</li><li>Oyuncuların sorularını cevaplamak.</li><li>Gerekli durumlarda üst yetkiliye başvurmak.</li><li>Oyuncular arasında tarafsız kalmak.</li></ul>`},
+{id:"davranis",title:"🤝 Davranış ve Tutum",content:`<p>Rehberler bütün oyunculara karşı saygılı, sakin ve yardımsever davranmalıdır.</p><h3>Rehber:</h3><ul><li>Saygılı konuşmalıdır.</li><li>Oyuncuyu dinlemelidir.</li><li>Sabırlı olmalıdır.</li><li>Bilmediği konuyu araştırmalıdır.</li></ul><h3>Rehber yapmamalıdır:</h3><ul><li>Oyuncuyla tartışmamalıdır.</li><li>Oyuncuyu küçük düşürmemelidir.</li><li>Yetkisini tehdit amacıyla kullanmamalıdır.</li><li>Kişisel sebeplerle işlem yapmamalıdır.</li></ul>`},
+{id:"tarafsiz",title:"⚖️ Tarafsızlık",content:`<p>Rehberler arkadaşları veya kendi Townları söz konusu olduğunda bile tarafsız kalmalıdır.</p><ul><li>Arkadaşına ayrıcalık tanıma.</li><li>Kanıt olmadan suçlama yapma.</li><li>Kişisel anlaşmazlıklarda yetkini kullanma.</li><li>Her iki tarafı da dinle.</li></ul>`},
+{id:"iletisim",title:"💬 Oyuncu İletişimi",content:`<p>Oyuncunun sorunu öncelikle tamamen anlaşılmalıdır. Ardından uygun çözüm anlatılmalıdır.</p><div class="quote">Bilmediğin bir konuda tahmin ederek cevap verme.</div>`},
+{id:"ticket",title:"🎫 Ticket Üzerinde Davranış",content:`<p>Ticket üzerinde rehber, yazdığı mesajlara ve üslubuna dikkat etmelidir.</p><ul><li>Oyuncuya karşı dikkatli, anlaşılır ve saygılı bir dil kullanmalıdır.</li><li>Bir oyuncuya çok kısa, başka bir oyuncuya gereksiz şekilde çok uzun cevap vererek keyfi farklılık oluşturmamalıdır.</li><li>Benzer durumdaki oyunculara mümkün olduğunca tutarlı ve eşit şekilde açıklama yapmalıdır.</li><li>Oyuncuların sorularını geçiştirmek yerine yeterli açıklama yapmalıdır.</li><li>Yeterli bilgi ve kanıt yoksa kesin karar vermemelidir.</li></ul>`},
+{id:"ticket-sorular",title:"📝 Ticket İlk Sorular",content:`<h3>Oyuncunun eşyası kaybolduysa ve geri istiyorsa:</h3><ol><li>Ölüm saati neydi?</li><li>Kaydı var mı?</li><li>Üzerinde hangi itemler vardı?</li></ol><h3>TP tuzağı / ticaret adı altında TP tuzağı iddiası varsa:</h3><ol start="4"><li>Tuzağa kendisi mi gitti, yoksa başka biri tarafından mı çekildi?</li></ol>`},
+{id:"towny",title:"🏘️ Towny İşlemleri",content:`<h3>Town</h3><p>Town kurma, oyuncu davet etme, claim ve izin sistemleri hakkında oyuncuya yardımcı ol.</p><h3>Nation</h3><p>Nation sistemi ve Townlar arasındaki ilişkiler hakkında bilgi ver.</p><h3>Outpost</h3><p>Outpost claim sistemi hakkında oyuncuya sunucunun belirlediği kurallar dahilinde bilgi ver.</p>`},
+{id:"grief",title:"🚫 Grief",content:`<p>Başka bir oyuncunun yapısına veya eşyalarına kasıtlı olarak zarar verilmesi grief olarak değerlendirilebilir.</p><h3>Rehberin yapması gerekenler:</h3><ul><li>Şikâyeti dinle.</li><li>Konumu öğren.</li><li>Kanıt olup olmadığını sor.</li><li>Yetki alanındaysa yardımcı ol.</li><li>Gerekirse moderasyon ekibine bildir.</li></ul>`},
+{id:"izin",title:"🔒 İzinler",content:`<p>Towny izinlerinde oyuncular farklı gruplara ayrılabilir.</p><ul><li>R — Resident</li><li>N — Nation</li><li>A — Ally</li><li>O — Outsider</li></ul><h3>Yaygın izinler</h3><ul><li>Build</li><li>Destroy</li><li>Switch</li><li>Item Use</li></ul>`},
+{id:"ihlal",title:"⚠️ Oyuncu İhlalleri",content:`<p>Rehber bir kural ihlali gördüğünde öncelikle olayın ne olduğunu anlamalıdır.</p><ul><li>Olayı değerlendir.</li><li>Kanıt varsa sakla.</li><li>Yetkin varsa gerekli işlemi uygula.</li><li>Yetkin yoksa yetkiliye bildir.</li></ul>`},
+{id:"yetkiler",title:"👮 Rehber Yetkileri",content:`<p>Uygulama yapmadan önce olayın hangi ihlal kapsamında olduğunu doğru şekilde belirle.</p><table><tr><th>İhlal</th><th>Mute Süresi</th></tr><tr><td>Spam</td><td>10 dakika</td></tr><tr><td>Normal küfür – kısaltma</td><td>1–2 saat</td></tr><tr><td>Normal küfür – uzun küfür</td><td>3–5 saat</td></tr><tr><td>Ailevi küfür</td><td>En az 12 saat, en fazla 1 gün</td></tr><tr><td>Hakaret</td><td>1–2 saat</td></tr><tr><td>Reklam</td><td>Sonradan eklenecek</td></tr></table><h3>Mute komutu</h3><div class="command">./mute isim süre sebebi</div><p>Örnek: <code>./mute Oyuncu 2saat Küfür</code></p>`},
+{id:"yetkili",title:"👮 Yetkiliye Aktarma",content:`<p>Rehberin yetkisini aşan durumlarda olay mutlaka ilgili yetkili ekibe aktarılmalıdır.</p><h3>Özellikle aktarılması gereken durumlar:</h3><ul><li>Hile şüphesi</li><li>Dupe / exploit</li><li>Büyük çaplı grief</li><li>Yetki istismarı</li><li>Sunucu ekonomisini etkileyen sorunlar</li><li>Büyük oyuncu anlaşmazlıkları</li></ul>`}
+];
+
+let sections=[];
+let adminUnlocked=false;
+const ADMIN_PASSWORD="BPTrehberi26";
+
+function showOnly(id){
+  ['site','adminLogin','adminPanel'].forEach(x=>{document.getElementById(x).style.display=x===id?'block':'none';});
+}
+
+async function loadSections(){
+  const {data,error}=await db.from('rehber_sections').select('*').order('sort_order',{ascending:true}).order('id',{ascending:true});
+  if(error){
+    console.error(error);
+    sections=defaultSections.map((s,i)=>({id:s.id,title:s.title,heading:s.title,content:s.content,sort_order:i}));
+    render();
+    return false;
+  }
+
+  if(!data || data.length===0){
+    const rows=defaultSections.map((s,i)=>({title:s.title,content:s.content,sort_order:i}));
+    const {data:inserted,error:insertError}=await db.from('rehber_sections').insert(rows).select();
+    if(insertError){
+      console.error(insertError);
+      sections=defaultSections.map((s,i)=>({id:s.id,title:s.title,heading:s.title,content:s.content,sort_order:i}));
+      render();
+      return false;
+    }
+    sections=inserted.map(x=>({id:x.id,title:x.title,heading:x.title,content:x.content,sort_order:x.sort_order}));
+  }else{
+    sections=data.map(x=>({id:x.id,title:x.title,heading:x.title,content:x.content,sort_order:x.sort_order}));
+  }
+
+  render();
+  return true;
+}
+
+function render(){
+  const menu=document.getElementById('menu');
+  const site=document.getElementById('site');
+  menu.innerHTML='';
+  site.innerHTML='';
+
+  sections.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.textContent=s.title;
+    b.onclick=()=>showPage(s.id,b);
+    if(i===0)b.classList.add('active');
+    menu.appendChild(b);
+
+    const sec=document.createElement('section');
+    sec.id='section-'+s.id;
+    sec.className='section';
+    sec.style.display=i===0?'block':'none';
+    sec.innerHTML=`<div class="card"><h2>${s.heading}</h2>${s.content}</div>`;
+    site.appendChild(sec);
+  });
+}
+
+function showPage(id,button){
+  if(adminUnlocked){document.getElementById('adminPanel').style.display='none';}
+  document.getElementById('adminLogin').style.display='none';
+  document.getElementById('site').style.display='block';
+  document.querySelectorAll('.section').forEach(x=>x.style.display='none');
+  const target=document.getElementById('section-'+id);
+  if(target)target.style.display='block';
+  document.querySelectorAll('.menu button').forEach(x=>x.classList.remove('active'));
+  if(button)button.classList.add('active');
+}
+
+function openAdminPanel(){
+  if(adminUnlocked){
+    showOnly('adminPanel');
+    renderAdmin();
+    return;
+  }
+  document.getElementById('adminPassword').value='';
+  document.getElementById('adminLoginMessage').textContent='';
+  showOnly('adminLogin');
+  setTimeout(()=>document.getElementById('adminPassword').focus(),50);
+}
+
+function checkAdminPassword(){
+  const value=document.getElementById('adminPassword').value;
+  if(value!==ADMIN_PASSWORD){
+    document.getElementById('adminLoginMessage').textContent='❌ Şifre yanlış.';
+    return;
+  }
+  adminUnlocked=true;
+  showOnly('adminPanel');
+  renderAdmin();
+}
+
+function closeAdminLogin(){
+  showOnly('site');
+}
+
+function closeAdmin(){
+  render();
+  showOnly('site');
+  document.querySelector('.menu button')?.classList.add('active');
+  document.querySelectorAll('.section').forEach((x,i)=>x.style.display=i===0?'block':'none');
+}
+
+function logoutAdmin(){
+  adminUnlocked=false;
+  closeAdmin();
+}
+
+function renderAdmin(){
+  const list=document.getElementById('sectionList');
+  list.innerHTML='';
+  sections.forEach((s,i)=>{
+    const row=document.createElement('div');
+    row.className='section-row';
+    row.innerHTML=`<span>${escapeHtml(s.title)}</span><div><button class="action" onclick="editSection(${i})">✏️ Düzenle</button> <button class="action danger" onclick="deleteSection(${i})">🗑️ Sil</button></div>`;
+    list.appendChild(row);
+  });
+}
+
+async function addSection(){
+  if(!adminUnlocked)return;
+  const title=document.getElementById('newTitle').value.trim();
+  const content=document.getElementById('newContent').value.trim();
+  if(!title||!content){alert('Bölüm adı ve içerik boş bırakılamaz.');return;}
+  const html=`<p>${escapeHtml(content).replace(/\n/g,'<br>')}</p>`;
+  const {data,error}=await db.from('rehber_sections').insert({title,content:html,sort_order:sections.length}).select().single();
+  if(error){alert('Bölüm eklenemedi: '+error.message);return;}
+  sections.push({id:data.id,title:data.title,heading:data.title,content:data.content,sort_order:data.sort_order});
+  document.getElementById('newTitle').value='';
+  document.getElementById('newContent').value='';
+  render();
+  renderAdmin();
+  alert('Bölüm eklendi ve ortak rehbere kaydedildi.');
+}
+
+async function editSection(i){
+  if(!adminUnlocked)return;
+  const s=sections[i];
+  const title=prompt('Bölüm adı:',s.title);
+  if(title===null)return;
+  const content=prompt('İçerik (düz metin):',stripHtml(s.content));
+  if(content===null)return;
+  const newTitle=title.trim()||s.title;
+  const newContent=`<p>${escapeHtml(content).replace(/\n/g,'<br>')}</p>`;
+  const {error}=await db.from('rehber_sections').update({title:newTitle,content:newContent,updated_at:new Date().toISOString()}).eq('id',s.id);
+  if(error){alert('Bölüm güncellenemedi: '+error.message);return;}
+  s.title=newTitle;
+  s.heading=newTitle;
+  s.content=newContent;
+  render();
+  renderAdmin();
+  alert('Bölüm güncellendi ve ortak rehbere kaydedildi.');
+}
+
+async function deleteSection(i){
+  if(!adminUnlocked)return;
+  if(sections.length<=1){alert('En az bir bölüm kalmalı.');return;}
+  if(!confirm('Bu bölümü silmek istediğine emin misin?'))return;
+  const {error}=await db.from('rehber_sections').delete().eq('id',sections[i].id);
+  if(error){alert('Bölüm silinemedi: '+error.message);return;}
+  sections.splice(i,1);
+  render();
+  renderAdmin();
+}
+
+async function resetData(){
+  if(!adminUnlocked)return;
+  if(!confirm('Tüm ortak rehber verileri silinip ilk haline dönsün mü?'))return;
+  const {error:delError}=await db.from('rehber_sections').delete().neq('id',0);
+  if(delError){alert('Eski veriler silinemedi: '+delError.message);return;}
+  const rows=defaultSections.map((s,i)=>({title:s.title,content:s.content,sort_order:i}));
+  const {data,error}=await db.from('rehber_sections').insert(rows).select();
+  if(error){alert('Varsayılan veriler yüklenemedi: '+error.message);return;}
+  sections=data.map(x=>({id:x.id,title:x.title,heading:x.title,content:x.content,sort_order:x.sort_order}));
+  render();
+  renderAdmin();
+  alert('Ortak rehber ilk haline döndürüldü.');
+}
+
+function stripHtml(x){const d=document.createElement('div');d.innerHTML=x;return d.innerText}
+function escapeHtml(x){return String(x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+
+(async function start(){
+  showOnly('site');
+  const ok=await loadSections();
+  if(!ok){
+    const note=document.createElement('p');
+    note.className='small';
+    note.textContent='⚠️ Supabase bağlantısı kurulamadı. Şimdilik varsayılan rehber gösteriliyor.';
+    document.getElementById('site').prepend(note);
+  }
+})();
+</script>
+
+</body>
+</html>
